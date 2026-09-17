@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f4f4f4" />
+  <title>Illustrious Prompt Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <h1>Illustrious Prompt Builder</h1>
+        <p>Danbooru系タグをカテゴリから選択してPromptを生成 <span id="dataStatus" class="data-status">準備中…</span></p>
+      </div>
+
+      <div class="global-search-block">
+        <input id="globalSearch" class="global-search" type="search" placeholder="全カテゴリから検索" autocomplete="off" />
+      </div>
+
+      <div class="topbar-actions">
+        <button id="randomAllBtn" class="secondary-button">🎲 全体ランダム</button>
+        <button id="clearAllBtn" class="ghost-button">全解除</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="category-panel">
+        <div class="panel-title">カテゴリ</div>
+        <nav id="categoryNav" class="category-nav" aria-label="カテゴリ"></nav>
+      </aside>
+
+      <section class="tag-panel">
+        <div class="tag-panel-header">
+          <div>
+            <div class="eyebrow" id="breadcrumb">Character</div>
+            <div class="title-row">
+              <h2 id="sectionTitle">人数・構成</h2>
+              <button id="randomSectionBtn" class="icon-button" title="この項目をランダム選択" aria-label="この項目をランダム選択">🎲</button>
+              <button id="randomCategoryBtn" class="icon-button" title="このカテゴリ全体をランダム選択" aria-label="このカテゴリ全体をランダム選択">🎲カテゴリ</button>
+              <button id="clearCategoryBtn" class="icon-button" title="このカテゴリの選択を解除" aria-label="このカテゴリの選択を解除">解除</button>
+            </div>
+          </div>
+
+          <div class="toolbar-right">
+            <input id="tagSearch" class="tag-search" type="search" placeholder="この項目を検索" autocomplete="off" />
+            <div class="sort-control">
+              <label for="sortSelect">並び順</label>
+              <select id="sortSelect">
+                <option value="count">使用数順</option>
+                <option value="name">名前順</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="subCategoryTabs" class="subcategory-tabs"></div>
+
+        <div class="tag-list-header">
+          <span id="selectionHint">複数選択可</span>
+          <span id="itemCount"></span>
+        </div>
+
+        <div id="tagGrid" class="tag-grid" aria-live="polite"></div>
+      </section>
+
+      <aside class="prompt-panel">
+        <div class="panel-title">現在のPrompt</div>
+        <div class="prompt-helper">カテゴリ別に表示されます。タグはここから個別削除できます。</div>
+        <div id="selectedSummary" class="selected-summary grouped-summary"></div>
+
+        <div class="prompt-actions prompt-actions-middle">
+          <button id="copyBtn" class="primary-button">コピー</button>
+          <button id="importPromptBtn" class="secondary-button">Prompt読込</button>
+          <div class="history-actions">
+            <button id="undoBtn" class="secondary-button history-button" title="戻す" aria-label="戻す">←</button>
+            <button id="redoBtn" class="secondary-button history-button" title="やり直す" aria-label="やり直す">→</button>
+          </div>
+        </div>
+
+        <div class="emphasis-toolbar">
+          <button id="emphasisBtn" class="secondary-button emphasis-open-button">強調設定</button>
+          <div id="emphasisStatus" class="emphasis-status">強調なし</div>
+        </div>
+
+        <div class="prompt-box prompt-box-compact">
+          <textarea id="promptOutput" readonly spellcheck="false"></textarea>
+        </div>
+
+        <div id="copyStatus" class="status" role="status" aria-live="polite"></div>
+      </aside>
+    </main>
+  </div>
+
+
+  <dialog id="importDialog" class="import-dialog">
+    <form method="dialog" class="import-dialog-card">
+      <div class="import-dialog-header">
+        <div>
+          <h2>Promptを読み込む</h2>
+          <p>カンマ区切りのPromptを解析し、辞書にあるタグを選択状態へ変換します。</p>
+        </div>
+        <button value="cancel" class="dialog-close" aria-label="閉じる">×</button>
+      </div>
+
+      <textarea id="importPromptText" class="import-prompt-text"
+        placeholder="例: 1girl, long hair, (blue eyes:1.2), loving aura, white shirt"></textarea>
+
+      <div class="import-help">
+        `_` と半角スペース、`(tag:1.2)` のような重み表記、一般的な括弧を正規化します。
+        辞書にないタグは追加せず、未認識として表示します。
+      </div>
+
+      <div id="importResult" class="import-result" aria-live="polite"></div>
+
+      <div class="import-dialog-actions">
+        <button type="button" id="importReplaceBtn" class="primary-button">現在を置換して読込</button>
+        <button type="button" id="importAddBtn" class="secondary-button">現在に追加</button>
+        <button value="cancel" class="ghost-button">閉じる</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="emphasisDialog" class="import-dialog emphasis-dialog">
+    <form method="dialog" class="import-dialog-card">
+      <div class="import-dialog-header">
+        <div>
+          <h2>強調設定</h2>
+          <p>現在のPromptから強調するタグを選択し、同じ強度を一括適用します。</p>
+        </div>
+        <button value="cancel" class="dialog-close" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="emphasis-weight-row">
+        <label for="emphasisWeight">強度</label>
+        <input id="emphasisWeight" class="emphasis-weight-input"
+               type="number" min="0.1" max="3" step="0.05" value="1.2" />
+        <div class="emphasis-weight-examples">
+          例: 1.1 = 弱め / 1.2–1.3 = 中程度 / 1.5以上 = 強め
+        </div>
+      </div>
+
+      <div class="emphasis-select-actions">
+        <button type="button" id="emphasisSelectAllBtn" class="ghost-button">全選択</button>
+        <button type="button" id="emphasisClearSelectionBtn" class="ghost-button">選択解除</button>
+      </div>
+
+      <div id="emphasisTagList" class="emphasis-tag-list"></div>
+
+      <div class="import-dialog-actions">
+        <button type="button" id="emphasisApplyBtn" class="primary-button">適用</button>
+        <button type="button" id="emphasisRemoveAllBtn" class="secondary-button">強調をすべて解除</button>
+        <button value="cancel" class="ghost-button">閉じる</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="catalog.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
